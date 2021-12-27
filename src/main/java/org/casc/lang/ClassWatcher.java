@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public class ClassWatcher {
     private static WatchService ws;
@@ -58,9 +57,9 @@ public class ClassWatcher {
         );
 
         Thread thread = new Thread(() -> {
-            while (true) {
-                WatchKey wk = null;
+            WatchKey wk = null;
 
+            while (true) {
                 try {
                     wk = ws.take();
 
@@ -69,16 +68,15 @@ public class ClassWatcher {
                     for (var event : wk.pollEvents()) {
                         var changedFile = parentFolder.toPath().resolve((Path) event.context());
 
-                        if (Files.exists(changedFile) && changedFile == classFile.toPath()) {
+                        if (Files.exists(changedFile)) {
                             var process = execJavap(classFile);
 
                             process.waitFor();
 
                             javapTextArea.get().setText("");
-                            var output = new BufferedReader(process.exitValue() == 0 ? process.inputReader() : process.errorReader())
+                            new BufferedReader(process.exitValue() == 0 ? process.inputReader() : process.errorReader())
                                     .lines()
-                                    .collect(Collectors.joining("\n"));
-                            javapTextArea.get().setText(output);
+                                    .forEach(s -> javapTextArea.get().append(s + "\n"));
                         }
                     }
                 } catch (InterruptedException e) {
@@ -96,10 +94,10 @@ public class ClassWatcher {
 
         process.waitFor();
 
-        var output = new BufferedReader(process.exitValue() == 0 ? process.inputReader() : process.errorReader())
+        javapTextArea.get().setText("");
+        new BufferedReader(process.exitValue() == 0 ? process.inputReader() : process.errorReader())
                 .lines()
-                .collect(Collectors.joining("\n"));
-        javapTextArea.get().setText(output);
+                .forEach(s -> javapTextArea.get().append(s + "\n"));
         thread.start();
     }
 
